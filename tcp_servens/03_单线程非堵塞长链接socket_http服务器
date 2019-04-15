@@ -1,0 +1,67 @@
+import socket
+import re
+
+def process_html(new_socket,request):
+    # 提取文件名
+    request_lsit = request.splitlines()
+    res = re.match(r'[^/]+(/[^ ]*)',request_lsit[0])
+    print('*'*20,res)
+    file_name = ''
+    if res:
+        file_name = res.group(1)
+        if file_name == '/':
+            file_name = '/index.html'
+
+    # 打开文件位置
+    try:
+        print(file_name)
+        f = open('./html{}'.format(file_name),'rb')
+    except:
+        print('---没有该文件－－－')
+    else:
+        html = f.read()
+        f.close()
+        #　发送数据
+        response_body = html
+
+        response_header = 'HTTP/1.1 200 OK\r\n'
+        response_header += 'Content-Length:%d\r\n'%len(response_body)
+        response_header += '\r\n'
+        response = response_header.encode('utf-8') + response_body
+
+        new_socket.send(response)
+
+
+def main():
+    tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    tcp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR,1)
+
+    tcp_socket.bind(('127.0.0.1',8080))
+
+    tcp_socket.listen(128)
+    tcp_socket.setblocking(False)
+    tcp_socket_list = list()
+    while True:
+        try:
+            new_client,add_client = tcp_socket.accept()
+        except:
+            pass
+        else:
+            new_client.setblocking(False)
+            tcp_socket_list.append(new_client)
+
+        for new_socket in tcp_socket_list:
+            try:
+                data_con = new_socket.recv(1024).decode('utf-8')
+            except:
+                pass
+            else:
+                if data_con:
+                    process_html(new_socket,data_con)
+                else:
+                    new_socket.close()
+    tcp_socket.close()
+
+
+if __name__ == '__main__':
+    main()
